@@ -4,39 +4,48 @@ namespace SimpleRegistry;
 
 public class Registry
 {
-    private readonly Dictionary<string, IRegistryItem> _registryItems = new();
+    private readonly Dictionary<string, object> _registryItems = new();
     
-    public void Register<TRegistryType>(string key, TRegistryType obj) where TRegistryType : IRegistryItem
+    public void Register<TRegistryType>(string key, TRegistryType obj)
     {
         _registryItems.Add(key, obj);
     }
+    
+    public TRegistryType Get<TRegistryType>(string key)
+    {
+        object? item = _registryItems.GetValueOrDefault(key);
+        if (item == null) throw new RegistryException($"Item with key '{key}' not found.");
+        if (item is not TRegistryType typedItem) throw new RegistryException($"Item with key '{key}' is not of type '{typeof(TRegistryType)}'.");
 
-    public string GetKey<TRegistryType>(TRegistryType obj) where TRegistryType : IRegistryItem
+        return typedItem;
+    }
+
+    public string GetKey<TRegistryType>(TRegistryType obj) 
     {
         return _registryItems.FirstOrDefault(x => x.Value.Equals(obj)).Key;
     }
 
     [Obsolete("Removing registry items can cause many glitches and errors due to missing objects.")]
-    public void Unregister<TRegistryType>(TRegistryType obj) where TRegistryType : IRegistryItem
+    public void Unregister<TRegistryType>(TRegistryType obj)
     {
         _registryItems.Remove(GetKey(obj));
     }
     
     [Obsolete("Removing registry items can cause many glitches and errors due to missing objects.")]
-    public void Unregister<TRegistryType>(string key) where TRegistryType : IRegistryItem
+    public void Unregister<TRegistryType>(string key)
     {
         _registryItems.Remove(key);
     }
     
-    public void OverrideAtKey<TRegistryType>(string key, TRegistryType obj) where TRegistryType : IRegistryItem
+    public void OverrideAtKey<TRegistryType>(string key, TRegistryType obj)
     {
-        IRegistryItem? existing = _registryItems.GetValueOrDefault(key);
+        object? existing = _registryItems.GetValueOrDefault(key);
         if (existing == null) throw new RegistryException("Item to override not found.");
 
         _registryItems[key] = obj;
     }
     
-    public void OverrideByOld<TRegistryType>(TRegistryType oldObj, TRegistryType newObj) where TRegistryType : IRegistryItem
+    public void OverrideByOld<TRegistryType>(TRegistryType oldObj, TRegistryType newObj)
     {
         string key = GetKey(oldObj);
         if (string.IsNullOrEmpty(key)) throw new RegistryException("Item to override not found.");
@@ -44,12 +53,12 @@ public class Registry
         _registryItems[key] = newObj;
     }
     
-    public Dictionary<string, IRegistryItem> GetAllItems()
+    public Dictionary<string, object> GetAllItems()
     {
         return _registryItems;
     }
     
-    public Dictionary<string, TRegistryType> GetItemsOfType<TRegistryType>() where TRegistryType : IRegistryItem
+    public Dictionary<string, TRegistryType> GetItemsOfType<TRegistryType>()
     {
         return _registryItems
             .Where(x => x.Value is TRegistryType)
@@ -57,14 +66,12 @@ public class Registry
     }
     
     public TRegistryType FindItem<TRegistryType>(Func<TRegistryType, bool> predicate)
-        where TRegistryType : IRegistryItem
     {
         Dictionary<string, TRegistryType> matchingItems = GetItemsOfType<TRegistryType>();
         return matchingItems.First(x => predicate(x.Value)).Value;
     }
     
     public IEnumerable<TRegistryType> FindItems<TRegistryType>(Func<TRegistryType, bool> predicate)
-        where TRegistryType : IRegistryItem
     {
         Dictionary<string, TRegistryType> matchingItems = GetItemsOfType<TRegistryType>();
         return matchingItems
@@ -79,7 +86,7 @@ public class Registry
     }
     
     [Obsolete("Removing registry items can cause many glitches and errors due to missing objects.")]
-    public void Clear<TRegistryType>() where TRegistryType : IRegistryItem 
+    public void Clear<TRegistryType>()
     {
         var keysToRemove = _registryItems
             .Where(x => x.Value is TRegistryType)
@@ -92,8 +99,6 @@ public class Registry
         }
     }
 }
-
-public interface IRegistryItem;
 
 public class RegistryException : Exception
 {
